@@ -11,7 +11,7 @@ Dependencies: bash, GNU coreutils, [aria2](https://aria2.github.io).
 
 ## Install
 
-If you're an ArchLinux user,
+If you're an Arch Linux user,
 you can install it from the **AUR**:
 
 ```
