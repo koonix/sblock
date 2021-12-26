@@ -1,0 +1,12 @@
+#!/bin/sh
+# this file should be installed in /etc/cron.daily .
+# if a cron implementation is installed on the machine,
+# this will be run once a day.
+
+# if flock exists, use it to make sure
+# only one instance of sblock is running.
+if command -v flock >/dev/null; then
+    ( flock -n "$(command -v sblock)" sblock & ) >/dev/null 2>&1
+else
+    ( sblock & ) >/dev/null 2>&1
+fi
