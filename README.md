@@ -1,13 +1,14 @@
 # sblock
 
+<img src="logo.jpg" height="200">
+
 A bash script that downloads hosts sources in parallel,
 sanitizes them, and installs them in /etc/hosts.
 
 It's practically very similar to [hblock](https://github.com/hectorm/hblock).
-
 To migrate from hblock, just run `sudo mv -T /etc/hblock /etc/sblock`.
 
-Dependencies: bash, GNU coreutils, [aria2](https://aria2.github.io).
+**Dependencies**: bash, GNU coreutils, [aria2](https://aria2.github.io).
 
 ## Install
 
@@ -107,9 +108,12 @@ If the header file doesn't exist, sblock will add the following entries
 as the header (if you don't want this, make `/etc/sblock/header` an empty file):
 
 ```
-::1 localhost
-127.0.0.1 localhost
-127.0.1.1 $HOSTNAME.localdomain $HOSTNAME
+127.0.0.1       localhost
+127.0.1.1       $HOSTNAME.localdomain $HOSTNAME
+::1             localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+255.255.255.255 broadcasthost
 ```
 
 In the above block, $HOSTNAME is your machine's hostname,
