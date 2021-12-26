@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# download hosts sources in parallel, sanitize them, and put them in /etc/hosts.
+# to migrate from hblock, just run `sudo mv -T /etc/hblock /etc/sblock`.
+# requires GNU coreutils and aria2.
+
+# config
+srcs=/etc/sblock/sources.list
+allow=/etc/sblock/allow.list
+deny=/etc/sblock/deny.list
+header=/etc/sblock/header
+# the default header that's applied in absence of /etc/sblock/header.
+default_header="
+127.0.0.1       localhost
+127.0.1.1       $(uname -n).localdomain $(uname -n)
+::1             localhost ip6-localhost ip6-loopback
+ff02::1         ip6-allnodes
+ff02::2         ip6-allrouters
+255.255.255.255 broadcasthost
+"
+
+# if -h or --help is passed, print help message and exit.
+case $1 in
+    -h|--help)
+        echo 'https://github.com/soystemd/sblock'
+        printf 'Download and install hosts.\nUsage: sblock [-n]\n'
+        exit ;;
+esac
+
+# if NetworkManager is running on the system, use it to
+# wait until internet connectivity is detected.
+if [ "$1" != -n ] &&
+    command -v nmcli >/dev/null &&
+    pgrep -x NetworkManager >/dev/null
+then
+    echo waiting for internet connectivity...
+    # keep checking for connectivity every 2 minutes, for about 23 hours.
+    n=0
+    while :; do
+        case $(nmcli -g general.ip4-connectivity dev show) in
+            *full*) break ;;
+        esac
+        [ $((n++)) -ge 700 ] && exit 1
+        sleep 2m
+    done
+fi
+
+set -e
+
+[ -f "${srcs:?}" ] && [ -r "$srcs" ] || {
+    echo sblock: file "\"$srcs\"" must exist and be readable. >&2
+    exit 1
+}
+
+[ -f "$header" ] && [ -r "$header" ] && default_header='' || header=''
+[ -f "$allow"  ] && [ -r "$allow"  ] || allow=''
+[ -f "$deny"   ] && [ -r "$deny"   ] || deny=''
+
+dir=$(mktemp -d)
+tmp=$(mktemp -p "${dir:?}")
+trap 'rm -r "$dir"' EXIT
+aria2c --no-conf -d"${dir:?}" -i"${srcs:?}" -k1M -x5 &&
+    cut -d'#' -f1 "$dir"/* | # remove comments
+    grep -Po '^(127\.0\.0\.1|0\.0\.0\.0)\s+\K(www\.)?((([a-zA-Z0-9]{1,2})|([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]))\.)+[a-zA-Z]{2,}(?=\s*$)' | # get valid host entries
+    grep -Ev '\.(corp|domain|example|home|host|invalid|lan|local|localdomain|localhost|test)$' | # remove hosts with reserved top level domains
+    sort -fu | comm -13 <(${allow:+sort "$allow"}) - | # remove allow.list entries from hosts
+    cat ${deny:+"$deny"} - | # add deny.list entries
+    sed 's/^/0.0.0.0 /' | # add 0.0.0.0 redirection
+    cat <(date '+# %F %T') \
+        <(printf '\n# BEGIN HEADER\n') \
+        ${header:+"$header"} \
+        ${default_header:+<(printf '%s\n' "$default_header")} \
+        <(printf '# END HEADER\n\n') \
+        - \
+        >"${tmp:?}" &&
+    sudo install -vTm644 -- "$tmp" /etc/hosts
