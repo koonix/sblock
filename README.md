@@ -1,7 +1,7 @@
 <h1 align="center"><img src="logo.jpg" height="200"><br/>sblock</h1>
 
 <h3 align="center">
-A bash script that downloads hosts sources in parallel,
+A simple bash script that downloads hosts sources in parallel,
 sanitizes them, and installs them in /etc/hosts.
 </h3>
 
