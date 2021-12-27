@@ -1,14 +1,18 @@
-# sblock
+<h1 align="center"><img src="logo.jpg" height="200"><br/>sblock</h1>
 
-<img src="logo.jpg" height="200">
-
+<h3 align="center">
 A bash script that downloads hosts sources in parallel,
 sanitizes them, and installs them in /etc/hosts.
+</h3>
 
-It's practically very similar to [hblock](https://github.com/hectorm/hblock).
-To migrate from hblock, just run `sudo mv -T /etc/hblock /etc/sblock`.
+<p align="center">
+It's practically very similar to <a href="https://github.com/hectorm/hblock">hblock</a>.
+To migrate from hblock, just copy /etc/hblock to /etc/sblock.
+</p>
 
-**Dependencies**: bash, GNU coreutils, [aria2](https://aria2.github.io).
+<p align="center">
+Dependencies: bash, GNU coreutils, <a href="https://aria2.github.io">aria2</a>.
+</p>
 
 ## Install
 
@@ -24,8 +28,8 @@ Similarly, to uninstall, run `sudo make uninstall`.
 
 This will also install a cron entry in `/etc/cron.daily`, which will
 cause sblock to run once a day
-(unless you do not have any cron software like cronie or fcron
-installed on your machine).
+(that is if you have a cron software like cronie or fcron
+installed and running on your machine).
 
 ## Usage
 
