@@ -4,6 +4,7 @@
 # requires GNU coreutils and aria2.
 
 # config
+hosts=/etc/hosts
 srcs=/etc/sblock/sources.list
 allow=/etc/sblock/allow.list
 deny=/etc/sblock/deny.list
@@ -72,4 +73,4 @@ aria2c --no-conf -d"${dir:?}" -i"${srcs:?}" -k1M -x5 &&
         <(printf '# END HEADER\n\n') \
         - \
         >"${tmp:?}" &&
-    sudo install -vTm644 -- "$tmp" /etc/hosts
+    sudo install -vTm644 -- "$tmp" "${hosts:?}"
