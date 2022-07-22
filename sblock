@@ -11,7 +11,7 @@ header=/etc/sblock/header
 # the default header that's applied in absence of /etc/sblock/header.
 default_header="
 127.0.0.1       localhost
-127.0.1.1       $(uname -n).localdomain $(uname -n)
+127.0.1.1       $HOSTNAME.localdomain $HOSTNAME
 ::1             localhost ip6-localhost ip6-loopback
 ff02::1         ip6-allnodes
 ff02::2         ip6-allrouters
