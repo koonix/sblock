@@ -43,7 +43,7 @@ if [ "$1" != -n ] &&
     pgrep -x NetworkManager >/dev/null
 then
     echo waiting for internet connectivity...
-    # keep checking for connectivity every 2 minutes, for about 23 hours
+    # keep asking for connectivity status every 2 minutes, for about 23 hours
     n=0
     while :; do
         case $(nmcli -g general.ip4-connectivity dev show) in
@@ -81,10 +81,10 @@ aria2c --no-conf -d"${dir:?}" -i"${srcs:?}" -k1M -x5
 # remove comments
 cut -d'#' -f1 "$dir"/* |
 
-# get valid host entries
+# separate the valid host entries
 grep -Po '^(127\.0\.0\.1|0\.0\.0\.0)\s+\K(www\.)?((([a-zA-Z0-9]{1,2})|([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]))\.)+[a-zA-Z]{2,}(?=\s*$)' |
 
-# remove hosts with reserved top level domains
+# remove the hosts with reserved top level domains
 grep -Ev '\.(corp|domain|example|home|host|invalid|lan|local|localdomain|localhost|test)$' |
 
 # remove the allow.list entries from the hosts
