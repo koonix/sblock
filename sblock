@@ -1,15 +1,20 @@
 #!/usr/bin/env bash
-# download hosts sources in parallel, sanitize them, and put them in /etc/hosts.
-# to migrate from hblock, just run `sudo mv -T /etc/hblock /etc/sblock`.
-# requires GNU coreutils and aria2.
 
-# config
+# download hosts sources in parallel, sanitize them, and put them in /etc/hosts.
+# requires GNU coreutils, sed and aria2.
+
+# ================
+# = begin config
+# ================
+
 hosts=/etc/hosts
+
 srcs=/etc/sblock/sources.list
 allow=/etc/sblock/allow.list
 deny=/etc/sblock/deny.list
 header=/etc/sblock/header
-# the default header that's applied in absence of /etc/sblock/header.
+
+# the default header that's applied in the absence of /etc/sblock/header
 default_header="
 127.0.0.1       localhost
 127.0.1.1       $HOSTNAME.localdomain $HOSTNAME
@@ -19,7 +24,11 @@ ff02::2         ip6-allrouters
 255.255.255.255 broadcasthost
 "
 
-# if -h or --help is passed, print help message and exit.
+# ==============
+# = end config
+# ==============
+
+# if -h or --help is passed, print help message and exit
 case $1 in
     -h|--help)
         echo 'https://github.com/soystemd/sblock'
@@ -27,14 +36,14 @@ case $1 in
         exit ;;
 esac
 
-# if NetworkManager is running on the system, use it to
-# wait until internet connectivity is detected.
+# if NetworkManager is running on the system,
+# use it to wait until internet connectivity is detected
 if [ "$1" != -n ] &&
     command -v nmcli >/dev/null &&
     pgrep -x NetworkManager >/dev/null
 then
     echo waiting for internet connectivity...
-    # keep checking for connectivity every 2 minutes, for about 23 hours.
+    # keep checking for connectivity every 2 minutes, for about 23 hours
     n=0
     while :; do
         case $(nmcli -g general.ip4-connectivity dev show) in
@@ -45,32 +54,58 @@ then
     done
 fi
 
+# exit on any errors from here on out
 set -e
 
+# exit if the sources.list file is unreadable or nonexistent
 [ -f "${srcs:?}" ] && [ -r "$srcs" ] || {
     echo sblock: file "\"$srcs\"" must exist and be readable. >&2
     exit 1
 }
 
+# if any of the header, allow or deny files are absent, unset their variables
 [ -f "$header" ] && [ -r "$header" ] && default_header='' || header=''
 [ -f "$allow"  ] && [ -r "$allow"  ] || allow=''
 [ -f "$deny"   ] && [ -r "$deny"   ] || deny=''
 
+# make a temporary dir and file and clean them on exit
 dir=$(mktemp -d)
 tmp=$(mktemp -p "${dir:?}")
 trap 'rm -r "$dir"' EXIT
-aria2c --no-conf -d"${dir:?}" -i"${srcs:?}" -k1M -x5 &&
-    cut -d'#' -f1 "$dir"/* | # remove comments
-    grep -Po '^(127\.0\.0\.1|0\.0\.0\.0)\s+\K(www\.)?((([a-zA-Z0-9]{1,2})|([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]))\.)+[a-zA-Z]{2,}(?=\s*$)' | # get valid host entries
-    grep -Ev '\.(corp|domain|example|home|host|invalid|lan|local|localdomain|localhost|test)$' | # remove hosts with reserved top level domains
-    sort -fu | comm -13 <(${allow:+sort "$allow"}) - | # remove allow.list entries from hosts
-    cat ${deny:+"$deny"} - | # add deny.list entries
-    sed 's/^/0.0.0.0 /' | # add 0.0.0.0 redirection
-    cat <(date '+# %F %T') \
-        <(printf '\n# BEGIN HEADER\n') \
-        ${header:+"$header"} \
-        ${default_header:+<(printf '%s\n' "$default_header")} \
-        <(printf '# END HEADER\n\n') \
-        - \
-        >"${tmp:?}" &&
-    sudo install -vTm644 -- "$tmp" "${hosts:?}"
+
+# download the hosts using aria2
+aria2c --no-conf -d"${dir:?}" -i"${srcs:?}" -k1M -x5
+
+# == begin pipeline ==
+
+# remove comments
+cut -d'#' -f1 "$dir"/* |
+
+# get valid host entries
+grep -Po '^(127\.0\.0\.1|0\.0\.0\.0)\s+\K(www\.)?((([a-zA-Z0-9]{1,2})|([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]))\.)+[a-zA-Z]{2,}(?=\s*$)' |
+
+# remove hosts with reserved top level domains
+grep -Ev '\.(corp|domain|example|home|host|invalid|lan|local|localdomain|localhost|test)$' |
+
+# remove the allow.list entries from the hosts
+sort -fu | comm -13 <(${allow:+sort "$allow"}) - |
+
+# add the deny.list entries to the hosts
+cat ${deny:+"$deny"} - |
+
+# add 0.0.0.0 redirection
+sed 's/^/0.0.0.0 /' |
+
+# add the header and date
+cat <(date '+# %F %T') \
+    <(printf '\n# BEGIN HEADER\n') \
+    ${header:+"$header"} \
+    ${default_header:+<(printf '%s\n' "$default_header")} \
+    <(printf '# END HEADER\n\n') \
+    - \
+    >"${tmp:?}"
+
+# == end pipeline ==
+
+# install the hosts file
+sudo install -vTm644 "$tmp" "${hosts:?}"
