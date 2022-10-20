@@ -11,7 +11,7 @@ To migrate from hblock, just copy /etc/hblock to /etc/sblock.
 </p>
 
 <p align="center">
-Dependencies: bash, GNU coreutils, <a href="https://aria2.github.io">aria2</a>.
+Dependencies: bash, GNU coreutils, sed, <a href="https://aria2.github.io">aria2</a>.
 </p>
 
 ## Install
