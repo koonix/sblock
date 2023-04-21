@@ -1,13 +1,13 @@
-<h1 align="center"><img src="logo.png" height="200"><br/>sblock</h1>
+<p align="center"><img src="logo.png" height="200"></p>
 
-<h3 align="center">
+<h4 align="center">
 A simple bash script that downloads hosts sources in parallel,
-sanitizes them, and installs them in /etc/hosts.
-</h3>
+sanitizes them, and installs them in <code>/etc/hosts</code>.
+</h4>
 
 <p align="center">
 It's practically very similar to <a href="https://github.com/hectorm/hblock">hblock</a>.
-To migrate from hblock, just copy /etc/hblock to /etc/sblock.
+To migrate from hblock, just copy <code>/etc/hblock</code> to <code>/etc/sblock</code>.
 </p>
 
 <p align="center">
