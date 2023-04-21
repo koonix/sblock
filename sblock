@@ -16,12 +16,12 @@ header=/etc/sblock/header
 
 # the default header that's applied in the absence of /etc/sblock/header
 default_header="
-127.0.0.1       localhost
-127.0.1.1       $HOSTNAME.localdomain $HOSTNAME
-::1             localhost ip6-localhost ip6-loopback
-ff02::1         ip6-allnodes
-ff02::2         ip6-allrouters
-255.255.255.255 broadcasthost
+127.0.0.1        localhost
+127.0.1.1        $HOSTNAME.localdomain $HOSTNAME
+::1              localhost ip6-localhost ip6-loopback
+ff02::1          ip6-allnodes
+ff02::2          ip6-allrouters
+255.255.255.255  broadcasthost
 "
 
 # ==============
@@ -30,82 +30,90 @@ ff02::2         ip6-allrouters
 
 # if -h or --help is passed, print help message and exit
 case $1 in
-    -h|--help)
-        echo 'https://github.com/soystemd/sblock'
-        printf 'Download and install hosts.\nUsage: sblock [-n]\n'
-        exit ;;
+	-h|--help)
+		echo 'https://github.com/soystemd/sblock'
+		printf 'Download and install hosts.\nUsage: sblock [-n]\n'
+		exit ;;
 esac
 
 # if NetworkManager is running on the system,
 # use it to wait until internet connectivity is detected
-if [ "$1" != -n ] &&
-    command -v nmcli >/dev/null &&
-    pgrep -x NetworkManager >/dev/null
+if [[ $1 != '-n' ]] &&
+	command -v nmcli >/dev/null &&
+	pgrep -x NetworkManager >/dev/null
 then
-    echo waiting for internet connectivity...
-    # keep asking for connectivity status every 2 minutes, for about 23 hours
-    n=0
-    while :; do
-        case $(nmcli -g general.ip4-connectivity dev show) in
-            *full*) break ;;
-        esac
-        [ $((n++)) -ge 700 ] && exit 1
-        sleep 2m
-    done
+	echo 'waiting for internet connectivity...'
+	# keep asking for connectivity status every 2 minutes, for about 23 hours
+	n=0
+	while :; do
+		case $(nmcli -g general.ip4-connectivity dev show) in
+			*'(full)'*) break ;;
+		esac
+		(( n++ > 700 )) && exit 1
+		sleep 2m
+	done
 fi
 
 # exit on any errors from here on out
-set -e
+set -eu
 
 # exit if the sources.list file is unreadable or nonexistent
-[ -f "${srcs:?}" ] && [ -r "$srcs" ] || {
-    echo sblock: file "\"$srcs\"" must exist and be readable. >&2
+if [[ ! -f $srcs ]] || [[ ! -r $srcs ]]; then
+    echo "sblock: file \"$srcs\" must exist and be readable." >&2
     exit 1
-}
+fi
 
 # if any of the header, allow or deny files are absent, unset their variables
-[ -f "$header" ] && [ -r "$header" ] && default_header='' || header=''
-[ -f "$allow"  ] && [ -r "$allow"  ] || allow=''
-[ -f "$deny"   ] && [ -r "$deny"   ] || deny=''
+[[ -f $header ]] && [[ -r $header ]] && default_header='' || header=''
+[[ -f $allow  ]] && [[ -r $allow  ]] || allow=''
+[[ -f $deny   ]] && [[ -r $deny   ]] || deny=''
 
 # make a temporary dir and file and clean them on exit
 dir=$(mktemp -d)
 tmp=$(mktemp -p "${dir:?}")
-trap 'rm -r "$dir"' EXIT
+trap 'rm -r -- "$dir"' EXIT
 
 # download the hosts using aria2
-aria2c --no-conf -d"${dir:?}" -i"${srcs:?}" -k1M -x5
+aria2c --no-conf --dir="${dir:?}" --input-file="${srcs:?}" \
+	--min-split-size=1M --max-connection-per-server=5
 
-# == begin pipeline ==
+# =====
+# = begin pipeline
+# =====
+
+# concatenate and push the downloaded files to the pipeline
+cat "$dir"/* |
 
 # remove comments
-cut -d'#' -f1 "$dir"/* |
+	cut -d'#' -f1 |
 
 # separate the valid host entries
-grep -Po '^(127\.0\.0\.1|0\.0\.0\.0)\s+\K(www\.)?((([a-zA-Z0-9]{1,2})|([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]))\.)+[a-zA-Z]{2,}(?=\s*$)' |
+	grep -Po '^(127\.0\.0\.1|0\.0\.0\.0)\s+\K(www\.)?((([a-zA-Z0-9]{1,2})|([a-zA-Z0-9][a-zA-Z0-9-]+[a-zA-Z0-9]))\.)+[a-zA-Z]{2,}(?=\s*$)' |
 
 # remove the hosts with reserved top level domains
-grep -Ev '\.(corp|domain|example|home|host|invalid|lan|local|localdomain|localhost|test)$' |
+	grep -Ev '\.(corp|domain|example|home|host|invalid|lan|local|localdomain|localhost|test)$' |
 
 # remove the allow.list entries from the hosts
-sort -fu | comm -13 <(${allow:+sort "$allow"}) - |
+	sort -fu | comm -13 <(${allow:+sort "$allow"}) - |
 
 # add the deny.list entries to the hosts
-cat ${deny:+"$deny"} - |
+	cat ${deny:+"$deny"} - |
 
 # add 0.0.0.0 redirection
-sed 's/^/0.0.0.0 /' |
+	sed 's/^/0.0.0.0 /' |
 
 # add the header and date
-cat <(date '+# %F %T') \
-    <(printf '\n# BEGIN HEADER\n') \
-    ${header:+"$header"} \
-    ${default_header:+<(printf '%s\n' "$default_header")} \
-    <(printf '# END HEADER\n\n') \
-    - \
-    >"${tmp:?}"
+	cat <(date '+# %F %T') \
+		<(printf '\n# BEGIN HEADER\n') \
+		${header:+"$header"} \
+		${default_header:+<(printf '%s\n' "$default_header")} \
+		<(printf '# END HEADER\n\n') \
+		- \
+		>"${tmp:?}" # write the output to the tmp file
 
-# == end pipeline ==
+# =====
+# = end pipeline
+# =====
 
-# install the hosts file
+# install the hosts file (tmp) to the destination
 sudo install -vTm644 "$tmp" "${hosts:?}"
