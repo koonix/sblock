@@ -1,18 +1,14 @@
 <p align="center"><img src="logo.png" height="200"></p>
 
-<h4 align="center">
-A simple bash script that downloads hosts sources in parallel,
-sanitizes them, and installs them in <code>/etc/hosts</code>.
-</h4>
+# sblock
 
-<p align="center">
-It's practically very similar to <a href="https://github.com/hectorm/hblock">hblock</a>.
+A tiny bash script that downloads hosts sources in parallel,
+sanitizes them, and installs them in `/etc/hosts`.
+
+It's practically very similar to [hblock](https://github.com/hectorm/hblock).
 To migrate from hblock, just copy <code>/etc/hblock</code> to <code>/etc/sblock</code>.
-</p>
 
-<p align="center">
-Dependencies: bash, GNU coreutils, sed, <a href="https://aria2.github.io">aria2</a>.
-</p>
+Dependencies: bash, GNU coreutils, sed, [aria2](https://aria2.github.io).
 
 ## Install
 
@@ -24,7 +20,7 @@ $ paru -S sblock-git
 ```
 
 Otherwise clone the repository and run `sudo make install`.
-Similarly, to uninstall, run `sudo make uninstall`.
+To uninstall, run `sudo make uninstall`.
 
 This will also install a cron entry in `/etc/cron.daily`, which will
 cause sblock to run once a day
@@ -70,7 +66,7 @@ Just put a list of your sources in the `/etc/sblock/sources.list` file:
 $ cat /etc/sblock/sources.list
 https://raw.githubusercontent.com/4skinSkywalker/Anti-Porn-HOSTS-File/master/HOSTS.txt
 https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn/hosts
-https://raw.githubusercontent.com/soystemd/hosts/master/hosts
+https://raw.githubusercontent.com/koonix/hosts/master/hosts
 ```
 
 ### allow.list
